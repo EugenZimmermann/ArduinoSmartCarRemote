@@ -316,26 +316,6 @@ void serialControl()
         {
             switch (cCommand)
             {
-            case 'U': // set ultrasonic sensor to specified position (limit to available range)
-                if (bIsParameter)
-                {
-                    // if (iComandParamter >= 0 && iComandParamter <= 1023)
-                    // {
-                    //     mode = 0;
-                    //     tJoysticks.disable();
-                    //     data[apJ2xDirection] = iComandParamter;
-                    // }
-                }
-                break;
-            case 'O': // set ultrasonicServoOffset
-                if (bIsParameter)
-                {
-                    // if (iComandParamter >= -50 && iComandParamter <= 50)
-                    // {
-                    //     ultrasonicServoOffset = iComandParamter;
-                    // }
-                }
-                break;
             case 'P':
             case 'p':
                 break;
