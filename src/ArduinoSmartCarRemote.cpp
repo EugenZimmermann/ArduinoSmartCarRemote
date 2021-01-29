@@ -320,7 +320,19 @@ void serialControl()
             case 'p':
                 break;
             case 'S':
+                // set speed in manual mode
+                if (bIsParameter)
+                {
+                    if (iComandParamter >= 0 && iComandParamter < 1024)
+                    {
+                        data[apMode] = 0;
+                        data[apJ1ySpeed] = round(iComandParamter);
+                    }
+                }
+                break;
             case 's':
+                // read current speed
+                Serial.println("Speed: " + String(data[apJ1ySpeed]));
                 break;
             case 'm': // get current mode
                 Serial.println("Mode: " + String(mode));
@@ -365,7 +377,19 @@ void serialControl()
                 Serial.println("LineFollowerSensorDeviation: " + String(data[apLFS]));
                 break;
             case 'R':
+                // set direction in manual mode
+                if (bIsParameter)
+                {
+                    if (iComandParamter >= 0 && iComandParamter < 1024)
+                    {
+                        data[apMode] = 0;
+                        data[apJ2xDirection] = round(iComandParamter);
+                    }
+                }
+                break;
             case 'r':
+                // read current direction
+                Serial.println("Direction: " + String(data[apJ2xDirection]));
                 break;
             case 'L':
             case 'l':
