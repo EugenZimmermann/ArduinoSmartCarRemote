@@ -46,7 +46,8 @@ Task tSerialControl(updateIntervalSerial / 2, TASK_FOREVER, &serialControl, &tas
 /*
  * Drive mode and general variables
  ********************************************************/
-#define debug 0
+#define debug 0                 //#ToDo
+int inputType = 0;              //switch between joystick remote and steering wheel remote
 int mode = 1;
 bool automatic = false;
 /*********************************************************/
@@ -92,10 +93,10 @@ bool bIsParameter;
 /*
  * Joysticks and buttons
  ********************************************************/
-const int pinJ1x = 5;                // define pin for direction X of joystick J1 (unused)
-const int pinJ1ySpeed = 1;           // define pin for direction Y of joystick J1 (speed)
-const int pinJ2xDirection = 2;       // define pin for direction X of joystick J2 (direction)
-const int pinJ2y = 3;                // define pin for direction Y of joystick J2 (horn)
+const int pinJ1x = A5;                // define pin for direction X of joystick J1 (unused)
+const int pinJ1ySpeed = A1;           // define pin for direction Y of joystick J1 (speed)
+const int pinJ2xDirection = A2;       // define pin for direction X of joystick J2 (direction)
+const int pinJ2y = A3;                // define pin for direction Y of joystick J2 (horn)
 
 // Potentiometers for fine tuning the joysticks
 const int R1Pin = 6;            // define R1
@@ -107,15 +108,18 @@ const int BPin = 3;             // define pin for D3
 const int CPin = 4;             // define pin for D4
 const int DPin = 5;             // define pin for D5
 
+// Gearshift on steering wheel
+const int ShiftLPin = 0;        // define pin for D6
+const int ShiftRPin = 1;        // define pin for D7
 /*********************************************************/
 
-
-int radar[2];
-char onlyOne=0;
-
+/*
+ * LED control
+ ********************************************************/
 const int led1Pin = 6;          // define pin for LED1 which is close to NRF24L01 and used to indicate the state of NRF24L01
 const int led2Pin = 7;          // define pin for LED2 which is the mode is displayed in the car remote control mode  
 const int led3Pin = 8;          // define pin for LED3 which is the mode is displayed in the car auto mode
+/*********************************************************/
 
 /*
  * Gyroscope
@@ -168,17 +172,17 @@ void RP_calculate(){
 
 void readGyroscopeSensor()
 {
-    readFrom(DEVICE, regAddress, TO_READ, buff); //read the acceleration data from the ADXL345
-                                                 //each axis reading comes in 10 bit resolution, ie 2 bytes.  Least Significat Byte first!!
-                                                 //thus we are converting both bytes in to one int
-    x = (((int)buff[1]) << 8) | buff[0];
-    y = (((int)buff[3]) << 8) | buff[2];
-    z = (((int)buff[5]) << 8) | buff[4];
+    // readFrom(DEVICE, regAddress, TO_READ, buff); //read the acceleration data from the ADXL345
+    //                                              //each axis reading comes in 10 bit resolution, ie 2 bytes.  Least Significat Byte first!!
+    //                                              //thus we are converting both bytes in to one int
+    // x = (((int)buff[1]) << 8) | buff[0];
+    // y = (((int)buff[3]) << 8) | buff[2];
+    // z = (((int)buff[5]) << 8) | buff[4];
 
-    RP_calculate();
+    // RP_calculate();
 
-    data[apJ2xDirection] = map(x, -300, 300, 1023, 0);
-    data[apJ1ySpeed] = map(y, -300, 300, 0, 1023);
+    // data[apJ2xDirection] = map(x, -300, 300, 1023, 0);
+    // data[apJ1ySpeed] = map(y, -300, 300, 0, 1023);
 }
 
 void readButtons()
@@ -215,6 +219,14 @@ void readButtons()
         tJoysticks.disable();
         tGyroscope.disable();
     }
+    if (digitalRead(ShiftLPin) == LOW)
+    {
+        tGyroscope.disable();
+    }
+    if (digitalRead(ShiftRPin) == LOW)
+    {
+        tGyroscope.disable();
+    }
 
     data[apMode] = mode;
 }
@@ -239,38 +251,38 @@ void readJoysticks()
 
 void comRF()
 {
-    if (mode < 3 || automatic)
-    {
-        // if manual mode, stop listening to incoming signals
-        radio.stopListening();
-        // send array data. If the sending succeeds
-        if (radio.write(data, sizeof(data)))
-            digitalWrite(led1Pin, HIGH);
+    // if (mode < 3 || automatic)
+    // {
+    //     // if manual mode, stop listening to incoming signals
+    //     radio.stopListening();
+    //     // send array data. If the sending succeeds
+    //     if (radio.write(data, sizeof(data)))
+    //         digitalWrite(led1Pin, HIGH);
 
-        // delay for a period of time, then turn off the signal LED for next sending
-        delay(2);
-        digitalWrite(led1Pin, LOW);
+    //     // delay for a period of time, then turn off the signal LED for next sending
+    //     delay(2);
+    //     digitalWrite(led1Pin, LOW);
 
-        // flag for sending the change to automatic mode at least once, before stopping to sending data
-        automatic = mode < 3;
-    }
-    else if (mode > 2)
-    {
-        // if automatic mode, start listening
-        radio.startListening(); // start monitoring
-        if (radio.available())
-        { // if receive the data
-            while (radio.available())
-            {                                   // read all the data
-                radio.read(data, sizeof(data)); // read data
-            }
-            digitalWrite(led1Pin, HIGH);
-        }
-        else
-        {
-            digitalWrite(led1Pin, LOW);
-        }
-    }
+    //     // flag for sending the change to automatic mode at least once, before stopping to sending data
+    //     automatic = mode < 3;
+    // }
+    // else if (mode > 2)
+    // {
+    //     // if automatic mode, start listening
+    //     radio.startListening(); // start monitoring
+    //     if (radio.available())
+    //     { // if receive the data
+    //         while (radio.available())
+    //         {                                   // read all the data
+    //             radio.read(data, sizeof(data)); // read data
+    //         }
+    //         digitalWrite(led1Pin, HIGH);
+    //     }
+    //     else
+    //     {
+    //         digitalWrite(led1Pin, LOW);
+    //     }
+    // }
 }
 
 void sendSerial()
@@ -473,10 +485,13 @@ void setup()
     pinMode(CPin, INPUT_PULLUP); // set CPin to output mode
     pinMode(DPin, INPUT_PULLUP); // set DPin to output mode
 
-    //Turning on the ADXL345
-    writeTo(DEVICE, 0x2D, 0);
-    writeTo(DEVICE, 0x2D, 16);
-    writeTo(DEVICE, 0x2D, 8);
+    pinMode(ShiftLPin, INPUT_PULLUP); // set ShiftLPin to output mode
+    pinMode(ShiftRPin, INPUT_PULLUP); // set ShiftRPin to output mode
+
+    // //Turning on the ADXL345
+    // writeTo(DEVICE, 0x2D, 0);
+    // writeTo(DEVICE, 0x2D, 16);
+    // writeTo(DEVICE, 0x2D, 8);
 
     Serial.println("Remote booted");
 }
